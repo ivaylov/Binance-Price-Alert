@@ -1,35 +1,56 @@
 import os
-import sched, time
+import sched
+import time
 import beepy as beep
-import requests
-import json
+from termcolor import colored
 from datetime import datetime
 from unicorn_binance_rest_api.manager import BinanceRestApiManager
 
-
-
 s = sched.scheduler(time.time, time.sleep)
+
+
 def refresh(sc):
-    os.system('clear')
-    request = requests.get("https://api.coingecko.com/api/v3/coins/markets?vs_currency=USD&ids=bitcoin&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h").text
-    request = json.loads(request)
-    btcprice = request[0]["current_price"]
-    btc1hchange = request[0]["price_change_percentage_1h_in_currency"]
-    market_cap = request[0]["market_cap"]
-    print(datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")+" - "+"Bitcoin price is:", '{:.2f}'.format(btcprice), "1h change: %", '{:.2f}'.format(btc1hchange), "Market Cap:", '{:.2f}'.format(market_cap))
-    print(f"\n")
-    ubra = BinanceRestApiManager(exchange="binance.com")
-    tickers = ubra.get_ticker()
-    for ticker in tickers:
-        if ticker['symbol'][-4:] == "USDT" and float(ticker['priceChangePercent']) > 0:
-            if ticker['lastPrice'] == ticker['highPrice'] and btc1hchange > 1:
-                if ticker['symbol'] == "BUSDUSDT":
-                    print(ticker['symbol']+" - "+"Banned symbol")
-                else:
-                    print(ticker['symbol']+" - "+ticker['lastPrice'])
-                    beep.beep('coin')
 
-    sc.enter(1, 1, refresh, (sc,))
+    while True:
+        try:
+            ubra = BinanceRestApiManager(exchange="binance.com")
+            tickers = ubra.get_ticker()
+        except Exception as e:
+            os.system('clear')
+            print(colored("Restarting...","red"))
+            continue
 
+        for printtick in tickers:  # only for print
+            if printtick['symbol'] == "BTCUSDT" and float(printtick['priceChangePercent']) < 0:
+                os.system('clear')
+                print(datetime.utcnow().strftime("%Y %b %d %a %H:%M:%S")+"\n")
+                print("BTC 24h Change %   " +
+                      '{:.2f}'.format(float(printtick['priceChangePercent'])))
+                print("BTC price Change   " +
+                      '{:.2f}'.format(float(printtick['priceChange'])))
+                print("BTC 24h High Price " +
+                      '{:.2f}'.format(float(printtick['highPrice'])))
+                print("BTC 24h Low Price  " +
+                      '{:.2f}'.format(float(printtick['lowPrice'])))
+                print("BTC Current Price  " +
+                      '{:.2f}'.format(float(printtick['lastPrice']))+"\n")
+
+        for hightick in tickers:  # if BTC 24h getting high
+            if hightick['symbol'] == "BTCUSDT" and float(hightick['priceChangePercent']) > 0:
+                print(colored(datetime.utcnow().strftime("%Y %b %d %a %H:%M:%S")+" - BTC Change % "+'{:.2f}'.format(float(
+                    hightick['priceChangePercent']))+" - "+'{:.2f}'.format(float(hightick['highPrice']))+" - "+'{:.2f}'.format(float(hightick['lastPrice'])), 'green'))
+        for hightick in tickers:  # high crypto alert
+            if hightick['symbol'][-4:] == "USDT" and float(hightick['priceChangePercent']) > 0:
+                if hightick['lastPrice'] == hightick['highPrice']:
+                    if hightick['symbol'] == "BUSDUSDT":
+                        pass
+                    else:
+                        print(
+                            colored(hightick['symbol']+" - "+str(float(hightick['lastPrice'])), 'green'))
+                        beep.beep('coin')
+                        crypto = True
+                        pass
+
+        sc.enter(1, 1, refresh, (sc,))
 s.enter(1, 1, refresh, (s,))
 s.run()

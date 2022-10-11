@@ -2,6 +2,7 @@ import os
 import sched
 import time
 import beepy as beep
+import shutil
 from termcolor import colored
 from datetime import datetime
 from unicorn_binance_rest_api.manager import BinanceRestApiManager
@@ -11,13 +12,14 @@ s = sched.scheduler(time.time, time.sleep)
 
 def refresh(sc):
     beep.beep('ready')
+    columns = shutil.get_terminal_size().columns
     while True:
         try:
             ubra = BinanceRestApiManager(exchange="binance.com")
             tickers = ubra.get_ticker()
         except Exception as e:
             os.system('clear')
-            print(colored("API Error. Restarting...", "red"))
+            print(colored("API Error. Restarting...", "red").center(columns))
             continue
         for printtick in tickers:  # only for print
             if printtick['symbol'] == "BTCUSDT" and float(printtick['priceChangePercent']) < -1:
@@ -36,8 +38,9 @@ def refresh(sc):
 
         for hightick in tickers:  # if BTC 24h getting high
             if hightick['symbol'] == "BTCUSDT" and float(hightick['priceChangePercent']) > -1:
-                print(colored(datetime.utcnow().strftime("%Y %b %d %a %H:%M:%S")+" - BTC Change % "+'{:.2f}'.format(float(
-                    hightick['priceChangePercent']))+" - "+'{:.2f}'.format(float(hightick['highPrice']))+" - "+'{:.2f}'.format(float(hightick['lastPrice'])), 'green'))
+                #os.system('clear')
+                print(colored(":: "+datetime.utcnow().strftime("%Y %b %d %a %H:%M:%S")+" :: % "+'{:.2f}'.format(float(
+                    hightick['priceChangePercent']))+" :: "+'{:.2f}'.format(float(hightick['highPrice']))+" :: "+'{:.2f}'.format(float(hightick['lastPrice']))+" ::", 'green'))
                 if hightick['symbol'] == "BTCUSDT" and hightick['lastPrice'] == hightick['highPrice']:
                     beep.beep('coin')
                 for hightick in tickers:  # high crypto alert
@@ -48,7 +51,7 @@ def refresh(sc):
                                 pass
                             else:
                                 print(
-                                    colored(hightick['symbol']+" - "+str(float(hightick['lastPrice'])), 'green'))
+                                    colored(hightick['symbol']+" - "+str(float(hightick['lastPrice'])), 'green'), end=" ")
                                 beep.beep('coin')
                                 pass
 
